@@ -56,8 +56,7 @@ function [full_cube,wvl_full] = HS_splice(vnir_cube,wvl_vnir,swir_cube,wvl_swir,
 
     % Spectral discrepancy over the image
     Delta_R = sqrt(mean((vnir_cube_overlap - swir_cube(:,:,idx_overlap_at_swir)).^2,3));
-%     Delta_R = sqrt(mean(((vnir_cube_overlap - swir_cube(:,:,idx_overlap_at_swir))./vnir_cube_overlap).^2,3));
-%     Correcting coefficients in the overlap
+    % Correcting coefficients in the overlap
     [coeff_overlap_vnir,coeff_overlap_swir] = overlap_coefficients(Delta_R,move_factor,...
         vnir_cube_overlap,swir_cube(:,:,idx_overlap_at_swir));
 
@@ -82,13 +81,9 @@ function [full_cube,wvl_full] = HS_splice(vnir_cube,wvl_vnir,swir_cube,wvl_swir,
     lambda_0_swir = ones(size(window_swir))*median(outside_wvl_swir);
     lambda_0_swir(mask) = outside_wvl_swir(round(window_swir(mask)/2));
 
-%     lambda_0_vnir = outside_wvl_vnir(1);
-%     lambda_0_swir = outside_wvl_swir(end);
-
     % Model the slope of the logistic function in VNIR
     slope_vnir = zeros(size(window_vnir));
     slope_vnir(mask) = fit_slope_vnir(Delta_R(mask));
-%     slope_vnir = reshape(fit_slope_vnir(Delta_R),size(Delta_R));
 
     % To model the slope of the logistic function in SWIR, use prior
     % information about the total number of bands outside of the
@@ -107,9 +102,6 @@ function [full_cube,wvl_full] = HS_splice(vnir_cube,wvl_vnir,swir_cube,wvl_swir,
     full_cube = cat(3,vnir_cube(:,:,idx_outside_at_vnir).*coeff_vnir,...
        swir_cube(:,:,idx_overlap_at_swir).*coeff_overlap_swir,...
         swir_cube(:,:,idx_outside_at_swir).*coeff_swir);
-   
-%     B = 1./(1+exp(-slope_vnir(r,c)*(outside_wvl_vnir-lambda_0_vnir(r,c))))  .*  (abs(phi_vnir(r,c)-1)+1)
-
 end
 
 function check_arguments(vnir_cube,wvl_vnir,swir_cube,wvl_swir,move_factor,mask)
@@ -163,7 +155,6 @@ end
 function [fit_window_vnir,fit_window_swir,fit_slope_vnir] = find_fits(Delta_R,idx_out_vnir,idx_out_swir,mask)
     % Get discrepancy values to fit window size and slope
     Mdelta = prctile(Delta_R(mask),75)+1.5*((prctile(Delta_R(mask),75)-prctile(Delta_R(mask),25)));
-%     Mdelta = 0.06;
     mdelta = prctile(Delta_R(mask),1);
     % Window fitting distribution
     leftout_bands_vnir = numel(find(idx_out_vnir));
@@ -183,18 +174,10 @@ function [fit_window_vnir,fit_window_swir,fit_slope_vnir] = find_fits(Delta_R,id
     opts_ws.Upper = [leftout_bands_swir inf 1];
     fit_window_vnir = fit(window_delta_vnir.',(1:leftout_bands_vnir).',fitfun_w,opts_wv);
     fit_window_swir = fit(window_delta_swir.',(1:leftout_bands_swir).',fitfun_w,opts_ws);
-% 
-%     asymptote_value = round(fit_window_vnir(Mdelta));
-%     [~,idx] = min(abs(fit_window_vnir(window_delta_vnir)-asymptote_value));
-%     Mdelta2 = window_delta_vnir(idx);
-%     window_delta_vnir2 = logspace(log10(mdelta),log10(Mdelta2),leftout_bands_vnir);
-% % 
-% 
     diff_fit3 = diff(diff(diff(fit_window_vnir(window_delta_vnir)))); %MAX of 3rd derivative
     [~,idx] = max(diff_fit3);
     Mdelta2 = window_delta_vnir(idx);
     window_delta_vnir2 = logspace(log10(mdelta),log10(Mdelta2),leftout_bands_vnir);
-
     fitfun_kv = fittype('a*exp(b*x)+c','independent','x','dependent','y');
     opts_kv =  fitoptions( 'Method', 'NonlinearLeastSquares');
     opts_kv.Display = 'Off'; 
@@ -213,14 +196,10 @@ function [coeff_vnir,coeff_swir] = overlap_coefficients(Delta_R,move_factor,over
     R = zeros(size(mask,1),size(mask,2),size(overlap_swir,3));
     R_pos = ((overlap_vnir-vnir_move)+(overlap_swir+swir_move))/2;
     R_neg = ((overlap_vnir+vnir_move)+(overlap_swir-swir_move))/2;
-%     R_pos = overlap_swir+swir_move;
-%     R_neg = overlap_swir-swir_move;
     R(mask) = R_pos(mask);
     R(~mask) = R_neg(~mask);
-    
     coeff_vnir = R ./ overlap_vnir; 
     coeff_swir = R ./ overlap_swir; 
-
 end
 
 
